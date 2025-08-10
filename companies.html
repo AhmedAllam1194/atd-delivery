@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>العملاء والتعاقدات | AllamTechno</title>
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="dev.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+const db = firebase.firestore();
+firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+</head>
+<body>
+<div class="topbar"><div><b>العملاء والتعاقدات</b></div><div><a class="button" href="dashboard.html">رجوع</a></div></div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html">🏠 الرئيسية</a>
+      <a href="orders.html">📦 الطلبات</a>
+      <a href="drivers.html">🚗 السائقون</a>
+      <a href="companies.html" class="active">🏢 العملاء والتعاقدات</a>
+      <a href="accounts.html">💰 الحسابات</a>
+      <a href="reports.html">📈 التقارير</a>
+      <a href="settings.html">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    <section class="card">
+      <h3>إضافة عميل</h3>
+      <div class="grid" style="grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px">
+        <input id="c_name" class="input" placeholder="اسم المطعم/الشركة">
+        <input id="c_phone" class="input" placeholder="هاتف">
+        <input id="c_email" class="input" placeholder="إيميل">
+        <input id="c_address" class="input" placeholder="عنوان">
+        <select id="c_preferred" class="input">
+          <option value="">وسيلة مفضلة</option>
+          <option value="bike">دراجة</option>
+          <option value="car">سيارة</option>
+        </select>
+        <button class="button" id="btnAddClient">حفظ العميل</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>إضافة تعاقد</h3>
+      <div class="grid" style="grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px">
+        <input id="t_client" class="input" placeholder="ID العميل">
+        <select id="t_type" class="input">
+          <option value="per_order">بالطلب (نسبة/قيمة)</option>
+          <option value="fixed">ثابت شهري</option>
+          <option value="hybrid">هجين (ثابت + بالطلب)</option>
+        </select>
+        <input id="t_rate" class="input" placeholder="قيمة/نسبة الطلب (مثال 0.5 أو 800)">
+        <input id="t_fixed" class="input" placeholder="قيمة الثابت (اختياري)">
+        <button class="button" id="btnAddContract">حفظ التعاقد</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>العملاء</h3>
+      <table class="table" id="tblClients"><thead><tr><th>ID</th><th>الاسم</th><th>هاتف</th><th>وسيلة</th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section class="card">
+      <h3>التعاقدات</h3>
+      <table class="table" id="tblContracts"><thead><tr><th>ID</th><th>عميل</th><th>نوع</th><th>قيمة/نسبة</th><th>ثابت</th></tr></thead><tbody></tbody></table>
+    </section>
+  </main>
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+
+el('btnAddClient').onclick = async () => {
+  const doc = {
+    name: el('c_name').value.trim(),
+    phone: el('c_phone').value.trim(),
+    email: el('c_email').value.trim(),
+    address: el('c_address').value.trim(),
+    preferred: el('c_preferred').value || null,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(!doc.name){ alert('اكتب اسم العميل'); return; }
+  const ref = await db.collection('clients').add(doc);
+  alert('تم إضافة العميل. ID: ' + ref.id);
+  loadLists();
+};
+
+el('btnAddContract').onclick = async () => {
+  const doc = {
+    clientId: el('t_client').value.trim(),
+    type: el('t_type').value,
+    rate: parseFloat(el('t_rate').value||0),
+    fixed: parseFloat(el('t_fixed').value||0),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(!doc.clientId){ alert('أدخل ID العميل'); return; }
+  await db.collection('contracts').add(doc);
+  alert('تم إضافة التعاقد');
+  loadLists();
+};
+
+async function loadLists(){
+  const clientsT = document.querySelector('#tblClients tbody'); clientsT.innerHTML='';
+  const snapC = await db.collection('clients').limit(200).get();
+  snapC.forEach(d=>{
+    const c=d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.id}</td><td>${c.name||''}</td><td>${c.phone||''}</td><td>${c.preferred||''}</td>`;
+    clientsT.appendChild(tr);
+  });
+
+  const contT = document.querySelector('#tblContracts tbody'); contT.innerHTML='';
+  const snapT = await db.collection('contracts').limit(200).get();
+  snapT.forEach(d=>{
+    const c=d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.id}</td><td>${c.clientId||''}</td><td>${c.type}</td><td>${c.rate||''}</td><td>${c.fixed||''}</td>`;
+    contT.appendChild(tr);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', loadLists);
+</script>
+</body></html>

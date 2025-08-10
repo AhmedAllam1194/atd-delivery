@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة التحكم | AllamTechno</title>
+<link rel="icon" href="assets/favicon.ico">
+<link rel="stylesheet" href="app.css">
+<script src="config.js">
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js">
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js">
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js">
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+<script>
+  if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+  <script src="dev.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 240 64" aria-label="AllamTechno logo">  <rect rx="8" ry="8" x="0" y="0" width="240" height="64" fill="#0ea5e9" opacity="0.12"/>  <text x="16" y="40" font-family="Segoe UI, Cairo, system-ui" font-size="28" font-weight="700" fill="#0f172a">Allam<span fill="#2563eb">Techno</span></text></svg><b style="white-space:nowrap">AllamTechno</b></div>
+  <div><button class="dev-only dev-icon" title="إعدادات المطور" onclick="__AT_DEV__.openDevModal()">⚙️</button> <button class="button" onclick="firebase.auth().signOut()">خروج</button></div>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html" class="active">🏠 الرئيسية</a>
+      <a href="orders.html" class="">📦 الطلبات</a>
+      <a href="drivers.html" class="">🚗 السائقون</a>
+      <a href="companies.html" class="">🏢 الشركات</a>
+      <a href="accounts.html" class="">💰 الحسابات</a>
+      <a href="fleet.html" class="">🚙 الأسطول</a>
+      <a href="reports.html" class="">📈 التقارير</a>
+      <a href="settings.html" class="">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    
+<div class="card"><h3 style="margin-top:0">مرحبًا 👋</h3>نسخة Firebase جاهزة للنشر مع Splash.</div>
+<div class="card" style="margin-top:12px">
+  <h3 style="margin-top:0">موقعي الآن (OpenStreetMap)</h3>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <div id="map" style="height:360px;border-radius:12px;overflow:hidden"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+</script>
+  <script>
+    var map = L.map('map').setView([29.3759, 47.9774], 12); // الكويت افتراضيًا
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(function(pos){
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      }, function(err){ console.log('Geo error', err); });
+    }
+  
+// MAP INIT
+let driverMarkers = [];let driverUnsub = null;
+let map, markers = [], currentFilter = 'all';
+function initMap(){
+  map = L.map('map').setView([29.3759, 47.9774], 11); // الكويت
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+}
+
+function markerFor(order){
+  const color = order.status==='delivered' ? '#10b981' : (order.status==='issue' ? '#ef4444' : '#f59e0b');
+  const icon = L.divIcon({
+    html: `<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:${color};box-shadow:0 2px 10px rgba(0,0,0,.15)"></div>`,
+    className: ''
+  });
+  const m = L.marker([order.lat, order.lng], {icon}).addTo(map);
+  const info = `
+    <div style="min-width:180px">
+      <b>طلب #${order.id||'-'}</b><br>
+      الحالة: ${order.status||'-'}<br>
+      العميل: ${order.customer||'-'}<br>
+      السائق: ${order.driver||'-'}
+    </div>`;
+  m.bindPopup(info);
+  m._order = order;
+  return m;
+}
+
+async function loadOrders(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  let data = [];
+  try {
+    const snap = await db.collection('orders').limit(200).get();
+    if (!snap.empty){
+      data = snap.docs.map(d => ({id:d.id, ...d.data()}))
+        .filter(o => typeof o.lat==='number' && typeof o.lng==='number');
+    }
+  } catch(e){ console.log('Firestore error, using demo data', e); }
+  if (data.length===0){
+    // Demo data (داخل الكويت)
+    data = [
+      {id:'D-101', lat:29.3759, lng:47.9774, status:'pending', customer:'يوسف', driver:'سالم'},
+      {id:'D-102', lat:29.337, lng:48.028, status:'delivered', customer:'مي', driver:'علي'},
+      {id:'D-103', lat:29.31, lng:47.94, status:'issue', customer:'محمد', driver:'سعيد'},
+    ];
+  }
+  // Apply filter
+  const filtered = data.filter(o => currentFilter==='all' ? true : o.status===currentFilter);
+  filtered.forEach(o => markers.push(markerFor(o)));
+  fitToMarkers();
+}
+
+function fitToMarkers(){
+  if(markers.length===0) return;
+  const group = new L.featureGroup(markers);
+  map.fitBounds(group.getBounds().pad(0.2));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  loadOrders();
+  document.getElementById('btnFit').onclick = fitToMarkers;
+  document.getElementById('btnMyLoc').onclick = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        const {latitude:lat, longitude:lng} = pos.coords;
+        map.setView([lat,lng], 14);
+        L.marker([lat,lng]).addTo(map).bindPopup('موقعي الآن').openPopup();
+      });
+    }
+  };
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.status;
+      loadOrders();
+    });
+  });
+});
+
+// === Drivers Live Tracking ===
+function clearDriverMarkers(){ driverMarkers.forEach(m=>map.removeLayer(m)); driverMarkers=[]; }
+function markerForDriver(d){
+  const color = d.online ? '#2563eb' : '#94a3b8';
+  const icon = L.divIcon({ html:`<div style="transform:translate(-50%,-50%);display:grid;place-items:center;width:22px;height:22px;border-radius:4px;border:2px solid #fff;background:${color};box-shadow:0 2px 8px rgba(0,0,0,.15)"></div>`, className:'' });
+  const m = L.marker([d.lat, d.lng], {icon}).addTo(map);
+  m.bindPopup(`<b>${d.name||'سائق'}</b><br>وسيلة: ${d.vehicle||'-'}<br>آخر تحديث: ${d.updatedAt?new Date(d.updatedAt.seconds*1000).toLocaleString('ar-EG'): '-'}`);
+  m._driver = d; return m;
+}
+function watchDrivers(){
+  if(driverUnsub) driverUnsub();
+  try{
+    driverUnsub = db.collection('drivers').onSnapshot(snap=>{
+      clearDriverMarkers();
+      const ds = []; snap.forEach(doc=>{ const d=doc.data(); if(typeof d.lat==='number' && typeof d.lng==='number') ds.push({id:doc.id, ...d}); });
+      ds.forEach(d=> driverMarkers.push(markerForDriver(d)));
+    });
+  }catch(e){ console.log('watch drivers error', e); }
+}
+
+// === Dispatch Lite ===
+function haversine(a,b){
+  const toRad = x=>x*Math.PI/180;
+  const R=6371; const dLat=toRad(b.lat-a.lat); const dLng=toRad(b.lng-a.lng);
+  const s1 = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s1));
+}
+async function dispatchNearest(orderId){
+  // fetch order
+  const odoc = await db.collection('orders').doc(orderId).get();
+  if(!odoc.exists){ alert('الطلب غير موجود'); return; }
+  const o = {id:odoc.id, ...odoc.data()};
+  if(typeof o.lat!=='number' || typeof o.lng!=='number'){ alert('الطلب بدون إحداثيات'); return; }
+  // find drivers with matching vehicle (if set) and online
+  const snap = await db.collection('drivers').where('online','==', true).get();
+  if(snap.empty){ alert('لا يوجد سائقون متصلون'); return; }
+  let best=null, bestDist=1e9;
+  snap.forEach(doc=>{
+    const d = doc.data();
+    if(typeof d.lat!=='number' || typeof d.lng!=='number') return;
+    if(o.vehicle && d.vehicle && o.vehicle!==d.vehicle) return;
+    const dist = haversine({lat:o.lat,lng:o.lng},{lat:d.lat,lng:d.lng});
+    if(dist<bestDist){ best={id:doc.id, ...d}; bestDist=dist; }
+  });
+  if(!best){ alert('لا يوجد سائق مناسب'); return; }
+  await db.collection('orders').doc(orderId).update({ driverId: best.id, assignedAt: firebase.firestore.FieldValue.serverTimestamp(), status: 'assigned' });
+  alert('تم إسناد الطلب إلى: ' + (best.name||best.id) + ' — المسافة ~ ' + bestDist.toFixed(2) + ' كم');
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  watchDrivers();
+});
+</script>
+</div>
+
+  </main>
+</div>
+<script>
+  (function(){
+    const role = localStorage.getItem('AT_ROLE')||'';
+    const topbar = document.querySelector('.topbar');
+    if(role === 'developer' && topbar){
+      const btn = document.createElement('button');
+      btn.id='devIcon';
+      btn.className='button';
+      btn.textContent='⚙️ مطوّر';
+      btn.style.marginInlineStart='8px';
+      btn.onclick = function(){ location.href='users-admin.html'; };
+      topbar.appendChild(btn);
+    }
+  })();
+</script>
+</body></html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zz_test | AllamTechno</title>
+<link rel="icon" href="assets/favicon.ico">
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+  <script src="dev.js"></script>
+</head>
+<body>
+<div class="topbar">
+  <div><b>AllamTechno</b></div>
+  <div><button class="button" onclick="firebase.auth().signOut()">خروج</button></div>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html">🏠 الرئيسية</a>
+      <a href="orders.html">📦 الطلبات</a>
+      <a href="drivers.html">🚗 السائقون</a>
+      <a href="companies.html">🏢 العملاء/الشركات</a>
+      <a href="fleet.html">🚙 الأسطول</a>
+      <a href="pricing.html">💵 التسعير</a>
+      <a href="cod.html">💸 تسويات الكاش</a>
+      <a href="invoices.html">🧾 الفواتير</a>
+      <a href="reports.html">📈 التقارير</a>
+      <a href="settings.html">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+<section class='card'><h3>Test</h3></section>
+  </main>
+</div>
+</body></html>

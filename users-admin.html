@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>إدارة المستخدمين</title>
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script> if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG); </script>
+<script src="dev.js"></script>
+</head>
+<body>
+<div class="topbar"><div><b>إدارة المستخدمين</b></div><div><button class="button" onclick="firebase.auth().signOut()">خروج</button></div></div>
+<main class="content" style="padding:16px">
+  <div class="card" style="max-width:720px;margin:auto">
+    <h3 style="margin-top:0">إضافة مستخدم</h3>
+    <div class="grid">
+      <input id="u_username" class="input" placeholder="Username">
+      <input id="u_email" class="input" placeholder="Email">
+      <select id="u_role" class="input"><option value="admin">Admin</option><option value="staff" selected>Staff</option><option value="driver">Driver</option></select>
+      <button id="btnAdd" class="button">حفظ</button>
+    </div>
+    <div style="color:#64748b;margin-top:8px;font-size:13px">أضف المستخدم أيضًا في Firebase Authentication لتمكين تسجيل الدخول.</div>
+  </div>
+  <div class="card" style="max-width:920px;margin:16px auto 0">
+    <h3 style="margin-top:0">قائمة المستخدمين</h3>
+    <table class="table" id="tbl"><thead><tr><th>Username</th><th>Email</th><th>Role</th></tr></thead><tbody></tbody></table>
+  </div>
+</main>
+<script>
+const db = firebase.firestore();
+(function guard(){
+  const role = localStorage.getItem('AT_ROLE')||'';
+  const uname = localStorage.getItem('AT_USERNAME')||'';
+  if (!(role==='developer' || uname==='Ahmedallam')){
+    alert('هذه الصفحة للمطوّر فقط'); location.href='dashboard.html';
+  }
+})();
+document.getElementById('btnAdd').onclick = async () => {
+  const username = document.getElementById('u_username').value.trim();
+  const email = document.getElementById('u_email').value.trim();
+  const role = document.getElementById('u_role').value;
+  if(!username || !email) return alert('أدخل Username و Email');
+  try{
+    await db.collection('users').doc(username).set({username, email, role});
+    alert('تم الحفظ.');
+    loadUsers();
+  }catch(e){ alert('خطأ: '+ e.message); }
+};
+async function loadUsers(){
+  const tbody = document.querySelector('#tbl tbody'); tbody.innerHTML='';
+  const snap = await db.collection('users').orderBy('username').get();
+  snap.forEach(d => {
+    const u = d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.username||''}</td><td>${u.email||''}</td><td>${u.role||''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+loadUsers();
+</script>
+</body></html>

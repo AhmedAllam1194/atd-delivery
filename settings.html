@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الإعدادات | AllamTechno</title>
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="dev.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+const db = firebase.firestore();
+firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+</head>
+<body>
+<div class="topbar"><div><b>الإعدادات</b></div><div><a class="button" href="dashboard.html">رجوع</a></div></div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html">🏠 الرئيسية</a>
+      <a href="orders.html">📦 الطلبات</a>
+      <a href="drivers.html">🚗 السائقون</a>
+      <a href="companies.html">🏢 العملاء والتعاقدات</a>
+      <a href="accounts.html">💰 الحسابات</a>
+      <a href="reports.html">📈 التقارير</a>
+      <a href="settings.html" class="active">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    <section class="card">
+      <h3>الثيم والألوان</h3>
+      <div class="grid" style="grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px">
+        <select id="theme" class="input">
+          <option value="light">فاتح</option>
+          <option value="dark">داكن</option>
+        </select>
+        <input id="primary" class="input" placeholder="اللون الرئيسي (hex)">
+        <input id="accent" class="input" placeholder="اللون المساعد (hex)">
+        <button class="button" id="btnSaveTheme">حفظ</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>الإعدادات المتقدمة (V10)</h3>
+      <div class="grid" style="grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px">
+        <input id="adv_pass" class="input" type="password" placeholder="كلمة سر الإعدادات المتقدمة">
+        <button class="button" id="btnUnlock">فتح</button>
+      </div>
+      <div id="advPanel" style="display:none;margin-top:10px">
+        <div class="grid" style="grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px">
+          <input id="companyName" class="input" placeholder="اسم الشركة">
+          <input id="country" class="input" placeholder="الدولة (مثال: الكويت)">
+          <input id="currency" class="input" placeholder="العملة (مثال: KWD)">
+          <button class="button" id="btnSaveCompany">حفظ</button>
+        </div>
+      </div>
+    </section>
+  <section class="card">
+  <h3>إدارة المستخدمين</h3>
+  <p class="muted">إضافة/عرض المستخدمين والأدوار (Admin/Staff/Driver)</p>
+  <p><a class="button dev-only" href="users-admin.html">فتح إدارة المستخدمين (للمطوّر)</a></p>
+</section>
+</main>
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+
+el('btnSaveTheme').onclick = async () => {
+  const doc = {
+    theme: el('theme').value,
+    primary: el('primary').value || null,
+    accent: el('accent').value || null,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await db.collection('settings').doc('ui').set(doc, {merge:true});
+  alert('تم حفظ الثيم');
+};
+
+el('btnUnlock').onclick = async () => {
+  const pass = el('adv_pass').value;
+  // كلمة السر محفوظة في settings/admin { advPassHash }
+  const s = await db.collection('settings').doc('admin').get();
+  const real = s.exists ? s.data().advPass : null;
+  if(!real){ alert('لم يتم تعيين كلمة سر بعد'); return; }
+  if(pass === real){ el('advPanel').style.display='block'; } else { alert('كلمة السر غير صحيحة'); }
+};
+
+el('btnSaveCompany').onclick = async () => {
+  const doc = {
+    companyName: el('companyName').value,
+    country: el('country').value,
+    currency: el('currency').value || 'KWD',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await db.collection('settings').doc('company').set(doc, {merge:true});
+  alert('تم حفظ بيانات الشركة');
+};
+</script>
+</body></html>

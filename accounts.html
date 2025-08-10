@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الحسابات | AllamTechno</title>
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="dev.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+const db = firebase.firestore();
+firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+</head>
+<body>
+<div class="topbar"><div><b>الحسابات</b></div><div><a class="button" href="dashboard.html">رجوع</a></div></div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html">🏠 الرئيسية</a>
+      <a href="orders.html">📦 الطلبات</a>
+      <a href="drivers.html">🚗 السائقون</a>
+      <a href="companies.html">🏢 العملاء والتعاقدات</a>
+      <a href="accounts.html" class="active">💰 الحسابات</a>
+      <a href="reports.html">📈 التقارير</a>
+      <a href="settings.html">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    <section class="card">
+      <h3>تسجيل تسويات COD</h3>
+      <div class="grid" style="grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px">
+        <input id="s_driver" class="input" placeholder="ID السائق">
+        <input id="s_amount" class="input" placeholder="المبلغ">
+        <input id="s_ref" class="input" placeholder="مراجع (اختياري)">
+        <button class="button" id="btnSaveSettle">حفظ</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>إنشاء فاتورة عميل</h3>
+      <div class="grid" style="grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px">
+        <input id="inv_client" class="input" placeholder="ID العميل">
+        <input id="inv_from" class="input" placeholder="من (YYYY-MM-DD)">
+        <input id="inv_to" class="input" placeholder="إلى (YYYY-MM-DD)">
+        <input id="inv_rate" class="input" placeholder="سعر/طلب (في حال per_order)">
+        <button class="button" id="btnBuildInvoice">تجهيز</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="button" id="btnExportCsv">تصدير CSV</button>
+      </div>
+      <table class="table" id="tblInv"><thead><tr><th>OrderID</th><th>Client</th><th>Status</th><th>DistanceKm</th><th>Amount</th></tr></thead><tbody></tbody></table>
+      <div id="invTotal" style="margin-top:8px;font-weight:700"></div>
+    </section>
+
+    <section class="card">
+      <h3>سجل تسويات COD</h3>
+      <table class="table" id="tblSettle"><thead><tr><th>التاريخ</th><th>سائق</th><th>المبلغ</th><th>مرجع</th></tr></thead><tbody></tbody></table>
+    </section>
+  </main>
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+
+el('btnSaveSettle').onclick = async () => {
+  const doc = {
+    driverId: el('s_driver').value.trim(),
+    amount: parseFloat(el('s_amount').value||0),
+    ref: el('s_ref').value.trim()||null,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(!doc.driverId || !doc.amount){ alert('أدخل السائق والمبلغ'); return; }
+  await db.collection('cod_settlements').add(doc);
+  alert('تم حفظ التسوية');
+  loadSettle();
+};
+
+let invoiceRows = [];
+el('btnBuildInvoice').onclick = async () => {
+  const clientId = el('inv_client').value.trim();
+  const from = new Date(el('inv_from').value.trim());
+  const to = new Date(el('inv_to').value.trim());
+  const rate = parseFloat(el('inv_rate').value||0);
+  if(!clientId || !el('inv_from').value || !el('inv_to').value){ alert('أدخل البيانات'); return; }
+
+  const snap = await db.collection('orders').where('clientId','==', clientId).get();
+  invoiceRows = [];
+  snap.forEach(d=>{
+    const o = d.data();
+    const ts = o.createdAt ? new Date(o.createdAt.seconds*1000) : null;
+    if(!ts || ts<from || ts>to) return;
+    const amount = o.amount || (o.status==='delivered' ? (rate||0) : 0);
+    invoiceRows.push({id:d.id, client: clientId, status: o.status||'', distanceKm: o.distanceKm||0, amount});
+  });
+
+  // render
+  const tbody = document.querySelector('#tblInv tbody'); tbody.innerHTML='';
+  let total = 0;
+  invoiceRows.forEach(r=>{ total += r.amount||0;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.id}</td><td>${r.client}</td><td>${r.status}</td><td>${r.distanceKm}</td><td>${r.amount.toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+  el('invTotal').textContent = 'الإجمالي: ' + total.toFixed(3);
+};
+
+el('btnExportCsv').onclick = () => {
+  if(!invoiceRows.length){ alert('لا يوجد بيانات'); return; }
+  const rows = [['OrderID','Client','Status','DistanceKm','Amount']].concat(invoiceRows.map(r=>[r.id,r.client,r.status,r.distanceKm,r.amount]));
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='invoice.csv'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+async function loadSettle(){
+  const tbody = document.querySelector('#tblSettle tbody'); tbody.innerHTML='';
+  const snap = await db.collection('cod_settlements').orderBy('createdAt','desc').limit(200).get();
+  snap.forEach(d=>{
+    const s = d.data();
+    const tr = document.createElement('tr');
+    const dt = s.createdAt ? new Date(s.createdAt.seconds*1000).toLocaleString('ar-EG') : '-';
+    tr.innerHTML = `<td>${dt}</td><td>${s.driverId}</td><td>${(s.amount||0).toFixed(3)}</td><td>${s.ref||''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+document.addEventListener('DOMContentLoaded', loadSettle);
+</script>
+</body></html>

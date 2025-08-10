@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تسجيل الدخول | AllamTechno</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+    const db = firebase.firestore();
+  </script>
+  <script src="dev.js"></script>
+</head>
+<body>
+  <div style="display:grid;place-items:center;min-height:100vh;padding:24px">
+    <div class="card" style="width:min(460px,96vw)">
+      <div class="brand" style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 240 64" aria-label="AllamTechno logo">  <rect rx="8" ry="8" x="0" y="0" width="240" height="64" fill="#0ea5e9" opacity="0.12"/>  <text x="16" y="40" font-family="Segoe UI, Cairo, system-ui" font-size="28" font-weight="700" fill="#0f172a">Allam<span fill="#2563eb">Techno</span></text></svg></div><div style="text-align:center;color:#64748b;font-size:13px;margin-bottom:8px">برمجة: المهندس أحمد علام</div><h2 style="margin-top:0">تسجيل الدخول</h2>
+      <form id="f" class="grid">
+        <input id="username" class="input" autocomplete="username" placeholder="اسم المستخدم">
+        <input id="pass" type="password" class="input" autocomplete="current-password" placeholder="كلمة السر">
+        <button class="button" type="submit">دخول</button>
+      </form>
+      <div id="msg" style="color:#ef4444;margin-top:8px"></div>
+    </div>
+  </div>
+  <script>
+    
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const uname = document.getElementById('username').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const msgEl = document.getElementById('msg'); msgEl.textContent = '';
+  if(!uname || !pass){ msgEl.textContent='اكتب اسم المستخدم وكلمة السر.'; return; }
+  try{
+    const snap = await db.collection('users').where('username','==', uname).limit(1).get();
+    if (snap.empty){ msgEl.textContent='اسم المستخدم غير موجود.'; return; }
+    const user = snap.docs[0].data();
+    const email = user.email;
+    await firebase.auth().signInWithEmailAndPassword(email, pass);
+    localStorage.setItem('AT_USERNAME', uname);
+    localStorage.setItem('AT_ROLE', user.role || 'staff');
+    location.href = 'dashboard.html';
+  } catch(err){
+    console.error(err);
+    msgEl.textContent = 'فشل تسجيل الدخول. تأكد من البيانات.';
+  }
+});
+</script>
+
+</body>
+</html>

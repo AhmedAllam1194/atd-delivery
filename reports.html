@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>التقارير | AllamTechno</title>
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="dev.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+const db = firebase.firestore();
+firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+</head>
+<body>
+<div class="topbar"><div><b>التقارير</b></div><div><a class="button" href="dashboard.html">رجوع</a></div></div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html">🏠 الرئيسية</a>
+      <a href="orders.html">📦 الطلبات</a>
+      <a href="drivers.html">🚗 السائقون</a>
+      <a href="companies.html">🏢 العملاء والتعاقدات</a>
+      <a href="accounts.html">💰 الحسابات</a>
+      <a href="reports.html" class="active">📈 التقارير</a>
+      <a href="settings.html">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    <section class="grid" style="grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px">
+      <div class="card"><div>طلبات اليوم</div><div id="kpiToday" class="kpi">-</div></div>
+      <div class="card"><div>تم التسليم اليوم</div><div id="kpiDelivered" class="kpi">-</div></div>
+      <div class="card"><div>متوسط زمن التسليم (د)</div><div id="kpiEta" class="kpi">-</div></div>
+      <div class="card"><div>إيراد تقديري اليوم</div><div id="kpiRevenue" class="kpi">-</div></div>
+    </section>
+    <section class="card" style="margin-top:12px">
+      <h3>الطلبات الأخيرة</h3>
+      <table class="table" id="tblRecent"><thead><tr><th>ID</th><th>عميل</th><th>سائق</th><th>حالة</th><th>وقت</th></tr></thead><tbody></tbody></table>
+    </section>
+  </main>
+</div>
+
+<script>
+function startOfDay(d){ d.setHours(0,0,0,0); return d; }
+async function loadKPIs(){
+  const now = new Date();
+  const from = startOfDay(new Date(now));
+  const to = new Date(from); to.setDate(to.getDate()+1);
+  const snap = await db.collection('orders').where('createdAt','>=', firebase.firestore.Timestamp.fromDate(from)).where('createdAt','<', firebase.firestore.Timestamp.fromDate(to)).get();
+  let today=0, delivered=0, sumEta=0, etaCount=0, revenue=0;
+  snap.forEach(d=>{
+    const o = d.data(); today++;
+    if(o.status==='delivered'){ delivered++; revenue += (o.amount||0); if(o.durationMin){ sumEta += o.durationMin; etaCount++; } }
+  });
+  document.getElementById('kpiToday').textContent = today;
+  document.getElementById('kpiDelivered').textContent = delivered;
+  document.getElementById('kpiEta').textContent = etaCount? (sumEta/etaCount).toFixed(1) : '-';
+  document.getElementById('kpiRevenue').textContent = revenue.toFixed(3);
+  const recent = await db.collection('orders').orderBy('createdAt','desc').limit(20).get();
+  const tbody = document.querySelector('#tblRecent tbody'); tbody.innerHTML='';
+  recent.forEach(d=>{
+    const o = d.data(); const dt = o.createdAt? new Date(o.createdAt.seconds*1000).toLocaleString('ar-EG') : '-';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.id}</td><td>${o.clientId||''}</td><td>${o.driverId||''}</td><td>${o.status||''}</td><td>${dt}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+document.addEventListener('DOMContentLoaded', loadKPIs);
+</script>
+<style>
+.kpi{font-size:28px;font-weight:800;margin-top:8px}
+</style>
+</body></html>

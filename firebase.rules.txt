@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn(){ return request.auth != null; }
+    match /{document=**} { allow read: if isSignedIn(); }
+    match /orders/{id} { allow create, update, delete: if isSignedIn(); }
+    match /drivers/{id} { allow create, update, delete: if isSignedIn(); }
+    match /companies/{id} { allow create, update, delete: if isSignedIn(); }
+    match /expenses/{id} { allow create, update, delete: if isSignedIn(); }
+    match /fleet/{id} { allow create, update, delete: if isSignedIn(); }
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); // يمكن تشديدها لاحقًا للمالك فقط
+    }
+  }
+}

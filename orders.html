@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الطلبات | AllamTechno</title>
+<link rel="icon" href="assets/favicon.ico">
+<link rel="stylesheet" href="app.css">
+<script src="config.js"></script>
+<script src="dev.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  if(!firebase.apps.length) firebase.initializeApp(window.AT_FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(function(u){ if(!u){ location.href='login.html'; } });
+</script>
+
+
+<script>
+(function(){
+  const url = new URL(location.href);
+  if (url.searchParams.get('dev') === '1'){ localStorage.setItem('AT_DEV_ENABLED','1'); }
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.__AT_DEV__) window.__AT_DEV__.applyDevVisibility();
+  });
+})();
+</script>
+
+</head>
+<body>
+<div class="topbar">
+  <div><b>AllamTechno Delivery</b></div>
+  <div><button class="dev-only dev-icon" title="إعدادات المطور" onclick="__AT_DEV__.openDevModal()">⚙️</button> <button class="button" onclick="firebase.auth().signOut()">خروج</button></div>
+</div>
+<div class="layout">
+  <aside class="sidebar">
+    <nav class="menu">
+      <a href="dashboard.html" class="">🏠 الرئيسية</a>
+      <a href="orders.html" class="active">📦 الطلبات</a>
+      <a href="drivers.html" class="">🚗 السائقون</a>
+      <a href="companies.html" class="">🏢 الشركات</a>
+      <a href="accounts.html" class="">💰 الحسابات</a>
+      <a href="fleet.html" class="">🚙 الأسطول</a>
+      <a href="reports.html" class="">📈 التقارير</a>
+      <a href="settings.html" class="">⚙️ الإعدادات</a>
+    </nav>
+  </aside>
+  <main class="content">
+    
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">الطلبات</h3>
+    <button class="button" onclick="addOrder()">➕ إضافة</button>
+  </div>
+  <table class="table" id="tbl"><thead><tr><th>رقم</th><th>تاريخ</th><th>العميل</th><th>السائق</th><th>الحالة</th><th>المبلغ</th><th></th></tr></thead><tbody></tbody></table>
+</div>
+<script>
+var c = db.collection('orders');
+async function load(){
+  var s = await c.orderBy('date','desc').limit(50).get();
+  var tb = document.querySelector('#tbl tbody'); tb.innerHTML='';
+  s.forEach(function(d){
+    var o=d.data();
+    var tr=document.createElement('tr');
+    tr.innerHTML = '<td>'+d.id+'</td><td>'+(o.date||'')+'</td><td>'+(o.client||'')+'</td><td>'+(o.driver||'')+'</td><td>'+(o.status||'')+'</td><td>'+(o.amount||0)+'</td>' +
+    '<td><button onclick="editOrder(\''+d.id+'\')">تعديل</button> <button onclick="delOrder(\''+d.id+'\')">حذف</button> <button onclick="assign(\''+d.id+'\')">تعيين سائق</button></td>';
+    tb.appendChild(tr);
+  });
+}
+async function addOrder(){
+  var id = prompt('رقم الطلب؟ (ORD-1001)'); if(!id) return;
+  var data={date:prompt('تاريخ (YYYY-MM-DD):'),client:prompt('اسم العميل:'),driver:'',status:'جديد',amount:parseFloat(prompt('المبلغ:','0')||'0')};
+  await c.doc(id).set(data); load();
+}
+async function editOrder(id){
+  var d=await c.doc(id).get(); if(!d.exists) return;
+  var o=d.data();
+  var data={date:prompt('تاريخ:',o.date)||o.date,client:prompt('عميل:',o.client)||o.client,driver:prompt('سائق:',o.driver)||o.driver,status:prompt('حالة:',o.status)||o.status,amount:parseFloat(prompt('مبلغ:',o.amount||'0')||o.amount||'0')};
+  await c.doc(id).set(data); load();
+}
+async function delOrder(id){ if(confirm('حذف الطلب؟')){ await c.doc(id).delete(); load(); } }
+async function assign(id){
+  var d=await c.doc(id).get(); if(!d.exists) return;
+  var o=d.data(); var drv=prompt('اختَر/اكتب اسم السائق:', o.driver||''); if(drv===null) return;
+  await c.doc(id).set(Object.assign(o, { driver: drv, status: o.status==='جديد'?'جاري':o.status })); load();
+}
+load();
+</script>
+
+  </main>
+</div>
+</body></html>
